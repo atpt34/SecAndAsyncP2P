@@ -1,12 +1,54 @@
 package com.oleksa.service;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class EncryptionWithSignatureServiceTest {
+
+    private static RSAService.RSAPrivateKey privateKey;
+    private static RSAService.RSAPrivateKey privateKeyOther;
+
+    @BeforeAll
+    static void setup() {
+        privateKey = RSAService.generatePrivateKey();
+        privateKeyOther = RSAService.generatePrivateKey();
+    }
+    @Test
+    public void testReversibility() {
+        String message = UUID.randomUUID().toString();
+
+        String decryptedMessage =
+                EncryptionWithSignatureService.decrypt(
+                        EncryptionWithSignatureService.encrypt(message, privateKey),
+                        privateKey);
+
+        assertEquals(message, decryptedMessage, "operation should be reversible");
+    }
+
+    @Test
+    public void testReversibilityWithSignature() {
+        String message = UUID.randomUUID().toString();
+
+        String decryptedMessage =
+                EncryptionWithSignatureService.decryptWithSignature(
+                        EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther),
+                        privateKey, privateKeyOther);
+
+        assertEquals(message, decryptedMessage, "operation should be reversible");
+    }
+
+    @Test
+    void testConcatArrays() {
+        byte[] a = new byte[]{1, 2, 3, 4};
+        byte[] b = new byte[]{5, 6};
+        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6}, EncryptionWithSignatureService.concatArrays(a, b));
+
+    }
 
     @Test
     void testDecode() {

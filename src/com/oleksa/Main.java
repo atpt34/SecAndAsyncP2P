@@ -61,39 +61,43 @@ public class Main {
 
         System.out.println(remoteCert.getModulus());
 
-        pool.submit(input(out, remoteCert, pool));
-        pool.submit(output(in, cert, pool));
+        pool.submit(input(out, remoteCert, cert, pool));
+        pool.submit(output(in, cert, remoteCert, pool));
 
         // no close socket or stream
         // terminate by tcp connection timeout !
 
     }
 
-    private static Runnable input(PrintWriter out, RSAService.RSAPublicKey remoteKey, ExecutorService executorService) {
+    private static Runnable input(PrintWriter out, RSAService.RSAPublicKey remoteKey, RSAService.RSAPrivateKey cert, ExecutorService executorService) {
         return () -> {
-            Scanner scanner = new Scanner(System.in);
-            String input;
-            do {
-                input = scanner.nextLine();
-                final String line = input;
-                executorService.submit(() -> out.println(EncryptionWithSignatureService.encrypt(line, remoteKey)));
-            } while (!"\\q".equals(input));
             try {
+                Scanner scanner = new Scanner(System.in);
+                String input;
+                do {
+                    input = scanner.nextLine();
+                    final String line = input;
+                    if ("\\q".equals(input)) {
+                        break;
+                    }
+                    executorService.submit(() -> out.println(EncryptionWithSignatureService.encryptWithSignature(line, cert, remoteKey)));
+                } while (true);
+
                 executorService.shutdown();
                 executorService.awaitTermination(1, TimeUnit.MILLISECONDS);
                 executorService.shutdownNow();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         };
     }
 
-    private static Runnable output(BufferedReader in, RSAService.RSAPrivateKey key, ExecutorService executorService) {
+    private static Runnable output(BufferedReader in, RSAService.RSAPrivateKey key, RSAService.RSAPublicKey publicKey, ExecutorService executorService) {
         return () -> {
             try {
                 String output = in.readLine();
-                executorService.submit(output(in, key, executorService));
-                final String line = EncryptionWithSignatureService.decrypt(output, key);
+                executorService.submit(output(in, key, publicKey, executorService));
+                final String line = EncryptionWithSignatureService.decryptWithSignature(output, key, publicKey);
                 System.out.println(line);
             } catch (Exception e) {
                 throw new RuntimeException(e);

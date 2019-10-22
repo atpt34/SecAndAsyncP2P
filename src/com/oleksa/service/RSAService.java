@@ -21,10 +21,6 @@ public final class RSAService {
         return new RSAPublicKey(new BigInteger(modulus));
     }
 
-    public static RSAPublicKey publicKeyOfModulus(BigInteger modulus) {
-        return new RSAPublicKey(modulus);
-    }
-
     public static RSAPrivateKey generatePrivateKey() {
         BigInteger p;
         BigInteger q;
@@ -45,7 +41,7 @@ public final class RSAService {
     }
 
     public static class RSAPublicKey {
-        protected static final int BITS = 2048;
+        protected static final int BITS = 256;
         protected static final BigInteger E = BigInteger.valueOf(0x10001);
         protected final BigInteger modulus;
 
