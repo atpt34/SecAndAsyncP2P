@@ -28,8 +28,11 @@ public class Main {
         ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         final RSAService.RSAPrivateKey cert;
-//        cert = RSAService.generatePrivateKey();
-        Future<RSAService.RSAPrivateKey> certFuture = pool.submit(RSAService::generatePrivateKey);
+        CompletableFuture<RSAService.RSAPrivateKey> certFuture =
+                CompletableFuture.supplyAsync(RSAService::generatePrivateKey, pool);
+        CompletableFuture<String> certB64Future = certFuture
+                .thenApply(key -> EncryptionWithSignatureService.publicKeyToString(key.getPublicKey()));
+
         final RSAService.RSAPublicKey remoteCert;
 
         BufferedReader in;
@@ -41,16 +44,16 @@ public class Main {
                 Socket clientSocket = serverSocket.accept();
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                cert = certFuture.get();
-                out.println(EncryptionWithSignatureService.publicKeyToString(cert.getPublicKey()));
+                cert = certFuture.join();
+                out.println(certB64Future.join());
                 remoteCert = EncryptionWithSignatureService.publicKeyFromString(in.readLine());
             } else {
                 Socket socket = new Socket(host, port);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
                 remoteCert = EncryptionWithSignatureService.publicKeyFromString(in.readLine());
-                cert = certFuture.get();
-                out.println(EncryptionWithSignatureService.publicKeyToString(cert.getPublicKey()));
+                cert = certFuture.join();
+                out.println(certB64Future.join());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -75,7 +78,13 @@ public class Main {
                 final String line = input;
                 executorService.submit(() -> out.println(EncryptionWithSignatureService.encrypt(line, remoteKey)));
             } while (!"\\q".equals(input));
-            executorService.shutdownNow();
+            try {
+                executorService.shutdown();
+                executorService.awaitTermination(1, TimeUnit.MILLISECONDS);
+                executorService.shutdownNow();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         };
     }
 
