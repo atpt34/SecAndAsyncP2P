@@ -7,17 +7,17 @@ public final class RSAService {
 
     public static byte[] encrypt(byte[] message, RSAPublicKey publicKey) {
         BigInteger msgInt = new BigInteger(message);
-        BigInteger encrypted = msgInt.modPow(publicKey.E, publicKey.modulus);
+        BigInteger encrypted = msgInt.modPow(publicKey.getPublicExponent(), publicKey.getModulus());
         return encrypted.toByteArray();
     }
 
     public static byte[] decrypt(byte[] encrypted, RSAPrivateKey privateKey) {
         BigInteger encryptedInt = new BigInteger(encrypted);
-        BigInteger decrypted = encryptedInt.modPow(privateKey.d, privateKey.modulus);
+        BigInteger decrypted = encryptedInt.modPow(privateKey.getPrivateExponent(), privateKey.getModulus());
         return decrypted.toByteArray();
     }
 
-    public static RSAPublicKey publicKeyOfModulus(byte[] modulus) {
+    static RSAPublicKey publicKeyOfModulus(byte[] modulus) {
         return new RSAPublicKey(new BigInteger(modulus));
     }
 
@@ -28,7 +28,7 @@ public final class RSAService {
             p = BigInteger.probablePrime(RSAPublicKey.BITS, ThreadLocalRandom.current());
             q = BigInteger.probablePrime(RSAPublicKey.BITS, ThreadLocalRandom.current());
         } while (!areStrongKeys(p, q));
-        return new RSAPrivateKey(p, q);
+        return RSAPrivateKey.of(p, q);
     }
 
     private static boolean areStrongKeys(BigInteger p, BigInteger q) {
@@ -41,12 +41,16 @@ public final class RSAService {
     }
 
     public static class RSAPublicKey {
-        protected static final int BITS = 256;
-        protected static final BigInteger E = BigInteger.valueOf(0x10001);
-        protected final BigInteger modulus;
+        static final int BITS = 2048;
+        static final BigInteger E = BigInteger.valueOf(0x10001);
+        final BigInteger modulus;
 
         private RSAPublicKey(BigInteger modulus) {
             this.modulus = modulus;
+        }
+
+        BigInteger getPublicExponent() {
+            return E;
         }
 
         public BigInteger getModulus() {
@@ -72,6 +76,14 @@ public final class RSAService {
 
         public RSAPublicKey getPublicKey() {
             return this;
+        }
+
+        BigInteger getPrivateExponent() {
+            return d;
+        }
+
+        static RSAPrivateKey of(BigInteger p, BigInteger q) {
+            return new RSAPrivateKey(p, q);
         }
     }
 }

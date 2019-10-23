@@ -17,13 +17,37 @@ class RSAServiceTest {
     }
 
     @Test
-    public void testReversibility() {
+    public void testReversibilityBytes() {
+
+        byte[] expected = new byte[]{ 127, -128, 0, -1};
+        byte[] actual =
+            RSAService.decrypt(
+                RSAService.encrypt(expected, privateKey),
+                privateKey);
+
+        assertArrayEquals(expected, actual, "operation should be reversible");
+    }
+
+    @Test
+    public void testReversibilityBytesOtherWay() {
+
+        byte[] expected = new byte[]{ 127, 1, -128, -2, 0, -3, -1, 4};
+        byte[] actual =
+                RSAService.encrypt(
+                        RSAService.decrypt(expected, privateKey),
+                        privateKey);
+
+        assertArrayEquals(expected, actual, "operation should be reversible");
+    }
+
+    @Test
+    public void testReversibilityString() {
         String message = UUID.randomUUID().toString();
 
         byte[] bytes =
-            RSAService.decrypt(
-                RSAService.encrypt(message.getBytes(), privateKey),
-                privateKey);
+                RSAService.decrypt(
+                        RSAService.encrypt(message.getBytes(), privateKey),
+                        privateKey);
 
         assertEquals(message, new String(bytes), "operation should be reversible");
     }

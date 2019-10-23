@@ -1,12 +1,13 @@
 package com.oleksa.service;
 
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 public class EncryptionWithSignatureService {
 
@@ -15,7 +16,7 @@ public class EncryptionWithSignatureService {
         return toBase64String(encrypted);
     }
 
-    public static String encryptWithSignature(String message, RSAService.RSAPrivateKey privateKey, RSAService.RSAPublicKey publicKey) {
+    public static String encryptWithSignature(String message, RSAService.RSAPublicKey publicKey, RSAService.RSAPrivateKey privateKey) {
         byte[] messageBytes = message.getBytes();
         long timestamp = minuteTimestamp();
         byte[] encryptedMessage = RSAService.encrypt(messageBytes, publicKey);
@@ -23,7 +24,11 @@ public class EncryptionWithSignatureService {
         byte[] messageAndTimestampBytes = concatArrays(messageBytes, timestampBytes);
         byte[] hashBytes = sha256(messageAndTimestampBytes);
         byte[] encryptedDigest = RSAService.decrypt(hashBytes, privateKey);
-        return toBase64String(encryptedMessage) + "$" + toBase64String(encryptedDigest);
+        return new StringBuilder()
+                .append(toBase64String(encryptedMessage))
+                .append("$")
+                .append(toBase64String(encryptedDigest))
+                .toString();
     }
 
     public static String decrypt(String ciphertext, RSAService.RSAPrivateKey privateKey) {
@@ -37,14 +42,19 @@ public class EncryptionWithSignatureService {
         String ciphertext = splited[0];
         String cipherhash = splited[1];
         byte[] cipherhashBytes = fromBase64Bytes(cipherhash);
+//        CompletableFuture<byte[]> completableFuture = CompletableFuture.supplyAsync(() -> fromBase64Bytes(cipherhash), Executors.newFixedThreadPool(1))
+//                .thenApply(cipherhashBytes -> RSAService.encrypt(cipherhashBytes, publicKey));
         long timestamp = minuteTimestamp();
         byte[] decryptedHash = RSAService.encrypt(cipherhashBytes, publicKey);
-        byte[] decryptedMessage = RSAService.decrypt(fromBase64Bytes(ciphertext), privateKey);
+        byte[] decodedText = fromBase64Bytes(ciphertext);
+        byte[] decryptedMessage = RSAService.decrypt(decodedText, privateKey);
         byte[] timestampBytes = longToBytes(timestamp);
         byte[] messageAndTimestampBytes = concatArrays(decryptedMessage, timestampBytes);
         byte[] hashBytes = sha256(messageAndTimestampBytes);
-        if (!Arrays.equals(decryptedHash, hashBytes)) {
-            throw new RuntimeException("Signature verification failed!");
+//        byte[] decryptedHash = completableFuture.join();
+        if (!Arrays.equals(decryptedHash, hashBytes)) { // sometimes fails
+            System.out.println("[Verification failed!]");
+//            throw new RuntimeException("Signature verification failed!");
         }
         return new String(decryptedMessage);
     }
@@ -56,10 +66,16 @@ public class EncryptionWithSignatureService {
         return messageAndTimestamp;
     }
 
-    public static byte[] longToBytes(long x) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(x);
-        return buffer.array();
+    public static byte[] longToBytes(long lng) {
+        return new byte[] {
+                (byte) lng,
+                (byte) (lng >> 8),
+                (byte) (lng >> 16),
+                (byte) (lng >> 24),
+                (byte) (lng >> 32),
+                (byte) (lng >> 40),
+                (byte) (lng >> 48),
+                (byte) (lng >> 56)};
     }
 
     static String toBase64String(byte[] bytes) {

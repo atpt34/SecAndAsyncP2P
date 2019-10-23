@@ -15,8 +15,13 @@ class EncryptionWithSignatureServiceTest {
 
     @BeforeAll
     static void setup() {
-        privateKey = RSAService.generatePrivateKey();
-        privateKeyOther = RSAService.generatePrivateKey();
+        privateKey = RSAService.RSAPrivateKey.of(
+                new BigInteger("79171700876741016327090752713106419095708740098543553969737498738474748533037"),
+                new BigInteger("94549426310136672161719930911355403099154744465568469663412692261944878909481"));
+        privateKeyOther = RSAService.RSAPrivateKey.of(
+                new BigInteger("92488746158379567793074615200166169650424117327281618617847207901671105237533"),
+                new BigInteger("89269254281373955335738100754166537020904187192316806027680265240100320424213")
+        );
     }
     @Test
     public void testReversibility() {
@@ -30,14 +35,40 @@ class EncryptionWithSignatureServiceTest {
         assertEquals(message, decryptedMessage, "operation should be reversible");
     }
 
+//    @Test
+    public void testReversibilityOtherWay() {
+
+        String message = UUID.randomUUID().toString();
+        String messageB64 = EncryptionWithSignatureService.toBase64String(message.getBytes());
+        String decrypt = EncryptionWithSignatureService.decrypt(messageB64, privateKey);
+        String encrypt = EncryptionWithSignatureService.encrypt(decrypt, privateKey);
+        byte[] bytes = EncryptionWithSignatureService.fromBase64Bytes(encrypt);
+        String messageRev = new String(bytes);
+
+        assertEquals(message, messageRev, "operation should be reversible");
+        assertEquals(messageB64, encrypt, "operation should be reversible");
+    }
+
     @Test
     public void testReversibilityWithSignature() {
         String message = UUID.randomUUID().toString();
-
+        String encryptedWithSignature =
+                EncryptionWithSignatureService.encryptWithSignature(message, privateKeyOther,  privateKey);
+        System.out.println();
         String decryptedMessage =
-                EncryptionWithSignatureService.decryptWithSignature(
-                        EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther),
-                        privateKey, privateKeyOther);
+                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKeyOther, privateKey);
+
+        assertEquals(message, decryptedMessage, "operation should be reversible");
+    }
+
+    @Test
+    public void testReversibilityWithSignatureOtherWay() {
+        String message = UUID.randomUUID().toString();
+        String encryptedWithSignature =
+                EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther);
+        System.out.println();
+        String decryptedMessage =
+                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKey, privateKeyOther);
 
         assertEquals(message, decryptedMessage, "operation should be reversible");
     }
@@ -65,6 +96,19 @@ class EncryptionWithSignatureServiceTest {
         String encoded = EncryptionWithSignatureService.toBase64String(bigIntegerValue.toByteArray());
         assertEquals("AJD/xGpitypuPiQsM+f+ZAlS6sZOjwqBuAFw/lBLf7L9W1bQIsZeqq2/A3Gxt0E95rvFWcKQwJVnVRejBf/RbEYfc6ZDqlzzrYBWHi3enGJ0QOWEMIpVFePJprqdAWTVpAg0UTYnrxpC+KNeXRSDFVjXLumjda1tFvc+6G8l2Vr2VjM/Dpe2LTtwXS99ddEi5MHl6ox3N6Lo9L1fED46GC+DTBdy3j+mJFqW9YEpAa0vc41fzFqMsrN+gZ3ggccB/LERGgw4CKs3qDbENrdAuhQN+SG30l1OrXD5d0BA7hSdJzXJmPBt9HH1rUPGUBR+2UU3gDxq1G4odnW4UPMSwOk=",
                 encoded);
+    }
+
+    @Test
+    void testBase64Reversibility() {
+        String expectedString = "abcdefghijk=";
+        byte[] expectedBytes = new byte[]{ 1, -1, 0, -128, 6, 127, -8};
+
+        String actualString = EncryptionWithSignatureService.toBase64String(EncryptionWithSignatureService.fromBase64Bytes(expectedString));
+        byte[] actualBytes = EncryptionWithSignatureService.fromBase64Bytes(EncryptionWithSignatureService.toBase64String(expectedBytes));
+
+        assertEquals(expectedString, actualString, "String is not properly encoded/decoded");
+        assertArrayEquals(expectedBytes, actualBytes, "byte[] is not properly encoded/decoded");
+
     }
 
 }

@@ -69,7 +69,7 @@ public class Main {
 
     }
 
-    private static Runnable input(PrintWriter out, RSAService.RSAPublicKey remoteKey, RSAService.RSAPrivateKey cert, ExecutorService executorService) {
+    private static Runnable input(PrintWriter out, RSAService.RSAPublicKey remoteKey, RSAService.RSAPrivateKey key, ExecutorService executorService) {
         return () -> {
             try {
                 Scanner scanner = new Scanner(System.in);
@@ -80,11 +80,11 @@ public class Main {
                     if ("\\q".equals(input)) {
                         break;
                     }
-                    executorService.submit(() -> out.println(EncryptionWithSignatureService.encryptWithSignature(line, cert, remoteKey)));
+                    executorService.submit(() -> out.println(EncryptionWithSignatureService.encryptWithSignature(line, remoteKey, key)));
                 } while (true);
 
                 executorService.shutdown();
-                executorService.awaitTermination(1, TimeUnit.MILLISECONDS);
+                executorService.awaitTermination(1, TimeUnit.SECONDS);
                 executorService.shutdownNow();
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -92,12 +92,12 @@ public class Main {
         };
     }
 
-    private static Runnable output(BufferedReader in, RSAService.RSAPrivateKey key, RSAService.RSAPublicKey publicKey, ExecutorService executorService) {
+    private static Runnable output(BufferedReader in, RSAService.RSAPrivateKey key, RSAService.RSAPublicKey remoteKey, ExecutorService executorService) {
         return () -> {
             try {
                 String output = in.readLine();
-                executorService.submit(output(in, key, publicKey, executorService));
-                final String line = EncryptionWithSignatureService.decryptWithSignature(output, key, publicKey);
+                executorService.submit(output(in, key, remoteKey, executorService));
+                final String line = EncryptionWithSignatureService.decryptWithSignature(output, key, remoteKey);
                 System.out.println(line);
             } catch (Exception e) {
                 throw new RuntimeException(e);
