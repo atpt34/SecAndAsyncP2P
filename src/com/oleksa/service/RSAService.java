@@ -6,15 +6,30 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class RSAService {
 
     public static byte[] encrypt(byte[] message, RSAPublicKey publicKey) {
-        BigInteger msgInt = new BigInteger(message);
+        BigInteger msgInt = returnNonNegative(new BigInteger(message), publicKey.getModulus());
         BigInteger encrypted = msgInt.modPow(publicKey.getPublicExponent(), publicKey.getModulus());
-        return encrypted.toByteArray();
+        return returnNonNegative(encrypted, publicKey.getModulus()).toByteArray();
     }
 
     public static byte[] decrypt(byte[] encrypted, RSAPrivateKey privateKey) {
-        BigInteger encryptedInt = new BigInteger(encrypted);
+        BigInteger encryptedInt = returnNonNegative(new BigInteger(encrypted), privateKey.getModulus());
         BigInteger decrypted = encryptedInt.modPow(privateKey.getPrivateExponent(), privateKey.getModulus());
-        return decrypted.toByteArray();
+        return returnNonNegative(decrypted, privateKey.getModulus()).toByteArray();
+    }
+
+    private static BigInteger returnNonNegative(BigInteger value, BigInteger modulus) {
+        if (value.signum() == -1) {
+            return value.add(modulus);
+        }
+        return value;
+    }
+
+    public static byte[] returnComplement(byte[] value, RSAPublicKey publicKey) {
+        BigInteger bigInteger = new BigInteger(value);
+        if (bigInteger.signum() == -1) {
+            return bigInteger.add(publicKey.getModulus()).toByteArray();
+        }
+        return bigInteger.subtract(publicKey.getModulus()).toByteArray();
     }
 
     static RSAPublicKey publicKeyOfModulus(byte[] modulus) {

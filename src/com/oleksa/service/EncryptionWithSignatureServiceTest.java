@@ -54,7 +54,6 @@ class EncryptionWithSignatureServiceTest {
         String message = UUID.randomUUID().toString();
         String encryptedWithSignature =
                 EncryptionWithSignatureService.encryptWithSignature(message, privateKeyOther,  privateKey);
-        System.out.println();
         String decryptedMessage =
                 EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKeyOther, privateKey);
 
@@ -66,7 +65,6 @@ class EncryptionWithSignatureServiceTest {
         String message = UUID.randomUUID().toString();
         String encryptedWithSignature =
                 EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther);
-        System.out.println();
         String decryptedMessage =
                 EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKey, privateKeyOther);
 
@@ -77,8 +75,8 @@ class EncryptionWithSignatureServiceTest {
     void testConcatArrays() {
         byte[] a = new byte[]{1, 2, 3, 4};
         byte[] b = new byte[]{5, 6};
-        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6}, EncryptionWithSignatureService.concatArrays(a, b));
-
+        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6},
+                EncryptionWithSignatureService.concatArrays(a, b));
     }
 
     @Test
@@ -103,8 +101,10 @@ class EncryptionWithSignatureServiceTest {
         String expectedString = "abcdefghijk=";
         byte[] expectedBytes = new byte[]{ 1, -1, 0, -128, 6, 127, -8};
 
-        String actualString = EncryptionWithSignatureService.toBase64String(EncryptionWithSignatureService.fromBase64Bytes(expectedString));
-        byte[] actualBytes = EncryptionWithSignatureService.fromBase64Bytes(EncryptionWithSignatureService.toBase64String(expectedBytes));
+        String actualString = EncryptionWithSignatureService.toBase64String(
+                EncryptionWithSignatureService.fromBase64Bytes(expectedString));
+        byte[] actualBytes = EncryptionWithSignatureService.fromBase64Bytes(
+                EncryptionWithSignatureService.toBase64String(expectedBytes));
 
         assertEquals(expectedString, actualString, "String is not properly encoded/decoded");
         assertArrayEquals(expectedBytes, actualBytes, "byte[] is not properly encoded/decoded");

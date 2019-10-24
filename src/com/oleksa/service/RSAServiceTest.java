@@ -29,6 +29,18 @@ class RSAServiceTest {
     }
 
     @Test
+    public void testReversibilityBytesNegative() {
+
+        byte[] expected = new byte[]{ -128, 127, 0, -1};
+        byte[] actual =
+                RSAService.decrypt(
+                        RSAService.encrypt(expected, privateKey),
+                        privateKey);
+
+        assertArrayEquals(expected, RSAService.returnComplement(actual, privateKey), "operation should be reversible");
+    }
+
+    @Test
     public void testReversibilityBytesOtherWay() {
 
         byte[] expected = new byte[]{ 127, 1, -128, -2, 0, -3, -1, 4};

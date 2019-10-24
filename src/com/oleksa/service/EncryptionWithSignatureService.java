@@ -52,9 +52,9 @@ public class EncryptionWithSignatureService {
         byte[] messageAndTimestampBytes = concatArrays(decryptedMessage, timestampBytes);
         byte[] hashBytes = sha256(messageAndTimestampBytes);
 //        byte[] decryptedHash = completableFuture.join();
-        if (!Arrays.equals(decryptedHash, hashBytes)) { // sometimes fails
-            System.out.println("[Verification failed!]");
-//            throw new RuntimeException("Signature verification failed!");
+        if (!Arrays.equals(decryptedHash, hashBytes) &&
+            !Arrays.equals(RSAService.returnComplement(decryptedHash, publicKey), hashBytes)) {
+            throw new RuntimeException("Signature verification failed!");
         }
         return new String(decryptedMessage);
     }
