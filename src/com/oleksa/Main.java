@@ -59,14 +59,13 @@ public class Main {
             throw new RuntimeException(e);
         }
 
-        System.out.println(remoteCert.getModulus());
+//        System.out.println(remoteCert.getModulus());
 
         pool.submit(input(out, remoteCert, cert, pool));
         pool.submit(output(in, cert, remoteCert, pool));
 
         // no close socket or stream
         // terminate by tcp connection timeout !
-
     }
 
     private static Runnable input(PrintWriter out, RSAService.RSAPublicKey remoteKey, RSAService.RSAPrivateKey key, ExecutorService executorService) {
@@ -80,11 +79,10 @@ public class Main {
                     if ("\\q".equals(input)) {
                         break;
                     }
-                    executorService.submit(() -> out.println(EncryptionWithSignatureService.encryptWithSignature(line, remoteKey, key)));
+                    executorService.submit(() -> out.println(EncryptionWithSignatureService.encryptWithSignature(line, remoteKey, key, executorService)));
                 } while (true);
 
                 executorService.shutdown();
-                executorService.awaitTermination(1, TimeUnit.SECONDS);
                 executorService.shutdownNow();
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -97,7 +95,7 @@ public class Main {
             try {
                 String output = in.readLine();
                 executorService.submit(output(in, key, remoteKey, executorService));
-                final String line = EncryptionWithSignatureService.decryptWithSignature(output, key, remoteKey);
+                final String line = EncryptionWithSignatureService.decryptWithSignature(output, key, remoteKey, executorService);
                 System.out.println(line);
             } catch (Exception e) {
                 throw new RuntimeException(e);

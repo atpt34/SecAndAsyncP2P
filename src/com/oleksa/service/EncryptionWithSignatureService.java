@@ -7,56 +7,62 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 public class EncryptionWithSignatureService {
 
     public static String encrypt(String message, RSAService.RSAPublicKey publicKey) {
-        byte[] encrypted = RSAService.encrypt(message.getBytes(), publicKey);
-        return toBase64String(encrypted);
+        return toBase64String(RSAService.encrypt(message.getBytes(), publicKey));
     }
 
-    public static String encryptWithSignature(String message, RSAService.RSAPublicKey publicKey, RSAService.RSAPrivateKey privateKey) {
+    public static String encryptWithSignature(String message,
+                                              RSAService.RSAPublicKey publicKey, RSAService.RSAPrivateKey privateKey,
+                                              ExecutorService executorService) {
         byte[] messageBytes = message.getBytes();
-        long timestamp = minuteTimestamp();
-        byte[] encryptedMessage = RSAService.encrypt(messageBytes, publicKey);
-        byte[] timestampBytes = longToBytes(timestamp);
-        byte[] messageAndTimestampBytes = concatArrays(messageBytes, timestampBytes);
-        byte[] hashBytes = sha256(messageAndTimestampBytes);
-        byte[] encryptedDigest = RSAService.decrypt(hashBytes, privateKey);
+        CompletableFuture<String> encryptedMessageB64 = CompletableFuture
+                .supplyAsync(() -> concatArrays(messageBytes, longToBytes(nowTimestamp())), executorService)
+                .thenApply(messageWithTimestamp -> RSAService.encrypt(messageWithTimestamp, publicKey))
+                .thenApply(EncryptionWithSignatureService::toBase64String);
+        byte[] digestBytes = sha256(concatArrays(messageBytes, longToBytes(minuteTimestamp())));
+        byte[] digestWithTimestamp = concatArrays(digestBytes, longToBytes(nowTimestamp()));
+        String encryptedDigestB64 = toBase64String(RSAService.decrypt(digestWithTimestamp, privateKey));
         return new StringBuilder()
-                .append(toBase64String(encryptedMessage))
+                .append(encryptedMessageB64.join())
                 .append("$")
-                .append(toBase64String(encryptedDigest))
+                .append(encryptedDigestB64)
                 .toString();
     }
 
     public static String decrypt(String ciphertext, RSAService.RSAPrivateKey privateKey) {
-        byte[] decoded = fromBase64Bytes(ciphertext);
-        byte[] decrypted = RSAService.decrypt(decoded, privateKey);
+        byte[] decrypted = RSAService.decrypt(fromBase64Bytes(ciphertext), privateKey);
         return new String(decrypted);
     }
 
-    public static String decryptWithSignature(String message, RSAService.RSAPrivateKey privateKey, RSAService.RSAPublicKey publicKey) {
+    public static String decryptWithSignature(String message,
+                                              RSAService.RSAPrivateKey privateKey, RSAService.RSAPublicKey publicKey,
+                                              ExecutorService executorService) {
         String[] splited = message.split("\\$");
         String ciphertext = splited[0];
         String cipherhash = splited[1];
-        byte[] cipherhashBytes = fromBase64Bytes(cipherhash);
-//        CompletableFuture<byte[]> completableFuture = CompletableFuture.supplyAsync(() -> fromBase64Bytes(cipherhash), Executors.newFixedThreadPool(1))
-//                .thenApply(cipherhashBytes -> RSAService.encrypt(cipherhashBytes, publicKey));
-        long timestamp = minuteTimestamp();
-        byte[] decryptedHash = RSAService.encrypt(cipherhashBytes, publicKey);
-        byte[] decodedText = fromBase64Bytes(ciphertext);
-        byte[] decryptedMessage = RSAService.decrypt(decodedText, privateKey);
-        byte[] timestampBytes = longToBytes(timestamp);
-        byte[] messageAndTimestampBytes = concatArrays(decryptedMessage, timestampBytes);
-        byte[] hashBytes = sha256(messageAndTimestampBytes);
-//        byte[] decryptedHash = completableFuture.join();
-        if (!Arrays.equals(decryptedHash, hashBytes) &&
-            !Arrays.equals(RSAService.returnComplement(decryptedHash, publicKey), hashBytes)) {
+        CompletableFuture<byte[]> decryptedHashWithTimestamp = CompletableFuture
+                .supplyAsync(() -> fromBase64Bytes(cipherhash), executorService)
+                .thenApply(cipherhashBytes -> RSAService.encrypt(cipherhashBytes, publicKey));
+        CompletableFuture<byte[]> decryptedHash = decryptedHashWithTimestamp
+                .thenApply(hashWithTS -> Arrays.copyOf(hashWithTS, hashWithTS.length - Long.BYTES));
+        CompletableFuture<byte[]> decryptedHashComplement = decryptedHashWithTimestamp
+                .thenApplyAsync(hash -> RSAService.returnComplement(hash, publicKey), executorService)
+                .thenApply(hashWithTS -> Arrays.copyOf(hashWithTS, hashWithTS.length - Long.BYTES));
+        byte[] decryptedMessageWithTimestamp = RSAService.decrypt(fromBase64Bytes(ciphertext), privateKey);
+        byte[] decryptedMessage = Arrays.copyOf(decryptedMessageWithTimestamp,
+                decryptedMessageWithTimestamp.length - Long.BYTES);
+        CompletableFuture<String> decryptedMessageString = CompletableFuture
+                .supplyAsync(() -> new String(decryptedMessage), executorService);
+        byte[] hashBytes = sha256(concatArrays(decryptedMessage, longToBytes(minuteTimestamp())));
+        if (!Arrays.equals(hashBytes, decryptedHash.join()) &&
+            !Arrays.equals(hashBytes, decryptedHashComplement.join())) {
             throw new RuntimeException("Signature verification failed!");
         }
-        return new String(decryptedMessage);
+        return decryptedMessageString.join();
     }
 
     static byte[] concatArrays(byte[] messageBytes, byte[] timestampBytes) {
@@ -102,6 +108,11 @@ public class EncryptionWithSignatureService {
         return LocalDateTime.now()
                 .withNano(0)
                 .withSecond(0)
+                .toEpochSecond(ZoneOffset.UTC);
+    }
+
+    private static long nowTimestamp() {
+        return LocalDateTime.now()
                 .toEpochSecond(ZoneOffset.UTC);
     }
 

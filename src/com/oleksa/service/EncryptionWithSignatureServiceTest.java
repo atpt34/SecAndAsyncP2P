@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,6 +14,7 @@ class EncryptionWithSignatureServiceTest {
 
     private static RSAService.RSAPrivateKey privateKey;
     private static RSAService.RSAPrivateKey privateKeyOther;
+    private static ExecutorService executorService;
 
     @BeforeAll
     static void setup() {
@@ -22,6 +25,7 @@ class EncryptionWithSignatureServiceTest {
                 new BigInteger("92488746158379567793074615200166169650424117327281618617847207901671105237533"),
                 new BigInteger("89269254281373955335738100754166537020904187192316806027680265240100320424213")
         );
+        executorService = Executors.newSingleThreadExecutor();
     }
     @Test
     public void testReversibility() {
@@ -35,7 +39,7 @@ class EncryptionWithSignatureServiceTest {
         assertEquals(message, decryptedMessage, "operation should be reversible");
     }
 
-//    @Test
+//    @Test // not required
     public void testReversibilityOtherWay() {
 
         String message = UUID.randomUUID().toString();
@@ -53,9 +57,9 @@ class EncryptionWithSignatureServiceTest {
     public void testReversibilityWithSignature() {
         String message = UUID.randomUUID().toString();
         String encryptedWithSignature =
-                EncryptionWithSignatureService.encryptWithSignature(message, privateKeyOther,  privateKey);
+                EncryptionWithSignatureService.encryptWithSignature(message, privateKeyOther,  privateKey, executorService);
         String decryptedMessage =
-                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKeyOther, privateKey);
+                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKeyOther, privateKey, executorService);
 
         assertEquals(message, decryptedMessage, "operation should be reversible");
     }
@@ -64,9 +68,9 @@ class EncryptionWithSignatureServiceTest {
     public void testReversibilityWithSignatureOtherWay() {
         String message = UUID.randomUUID().toString();
         String encryptedWithSignature =
-                EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther);
+                EncryptionWithSignatureService.encryptWithSignature(message, privateKey, privateKeyOther, executorService);
         String decryptedMessage =
-                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKey, privateKeyOther);
+                EncryptionWithSignatureService.decryptWithSignature(encryptedWithSignature, privateKey, privateKeyOther, executorService);
 
         assertEquals(message, decryptedMessage, "operation should be reversible");
     }
