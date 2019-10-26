@@ -15,12 +15,14 @@ public class Main {
 
     public static void main(String[] args) {
 
-        if (args.length < 3) {
+        if (args.length < 3 ||
+                !args[0].matches("(server)|(client)") ||
+                !args[1].matches("[0-9A-Za-z.-:]+") ||
+                !args[2].matches("[0-9]+")) {
             System.out.println("Usage: java Main server/client host port");
             return;
         }
 
-        // input data validation!
         String type = args[0];
         String host = args[1];
         int port = Integer.parseInt(args[2]);
