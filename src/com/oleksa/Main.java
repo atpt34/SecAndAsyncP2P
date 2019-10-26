@@ -23,22 +23,22 @@ public class Main {
             return;
         }
 
-        String type = args[0];
-        String host = args[1];
-        int port = Integer.parseInt(args[2]);
+        final String type = args[0];
+        final String host = args[1];
+        final int port = Integer.parseInt(args[2]);
 
-        ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        final ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        final RSAService.RSAPrivateKey cert;
         CompletableFuture<RSAService.RSAPrivateKey> certFuture =
                 CompletableFuture.supplyAsync(RSAService::generatePrivateKey, pool);
         CompletableFuture<String> certB64Future = certFuture
                 .thenApply(key -> EncryptionWithSignatureService.publicKeyToString(key.getPublicKey()));
 
+        final RSAService.RSAPrivateKey cert;
         final RSAService.RSAPublicKey remoteCert;
 
-        BufferedReader in;
-        PrintWriter out;
+        final BufferedReader in;
+        final PrintWriter out;
 
         try {
             if ("server".equals(type)) {
@@ -46,22 +46,21 @@ public class Main {
                 Socket clientSocket = serverSocket.accept();
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                cert = certFuture.join();
-                out.println(certB64Future.join());
-                remoteCert = EncryptionWithSignatureService.publicKeyFromString(in.readLine());
             } else {
                 Socket socket = new Socket(host, port);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
-                remoteCert = EncryptionWithSignatureService.publicKeyFromString(in.readLine());
-                cert = certFuture.join();
-                out.println(certB64Future.join());
             }
+            CompletableFuture<Void> certExchange = certB64Future
+                    .thenAccept(out::println);
+            System.out.println("Starting certificate exchange...");
+            remoteCert = EncryptionWithSignatureService.publicKeyFromString(in.readLine());
+            cert = certFuture.join();
+            certExchange.join();
+            System.out.println("... done!");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-//        System.out.println(remoteCert.getModulus());
 
         pool.submit(input(out, remoteCert, cert, pool));
         pool.submit(output(in, cert, remoteCert, pool));
