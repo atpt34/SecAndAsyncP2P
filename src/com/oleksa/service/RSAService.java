@@ -6,15 +6,15 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class RSAService {
 
     public static byte[] encrypt(byte[] message, RSAPublicKey publicKey) {
-        BigInteger msgInt = returnNonNegative(new BigInteger(message), publicKey.getModulus());
+        BigInteger msgInt = new BigInteger(message);
         BigInteger encrypted = msgInt.modPow(publicKey.getPublicExponent(), publicKey.getModulus());
-        return returnNonNegative(encrypted, publicKey.getModulus()).toByteArray();
+        return encrypted.toByteArray();
     }
 
     public static byte[] decrypt(byte[] encrypted, RSAPrivateKey privateKey) {
-        BigInteger encryptedInt = returnNonNegative(new BigInteger(encrypted), privateKey.getModulus());
+        BigInteger encryptedInt = new BigInteger(encrypted);
         BigInteger decrypted = encryptedInt.modPow(privateKey.getPrivateExponent(), privateKey.getModulus());
-        return returnNonNegative(decrypted, privateKey.getModulus()).toByteArray();
+        return decrypted.toByteArray();
     }
 
     private static BigInteger returnNonNegative(BigInteger value, BigInteger modulus) {
