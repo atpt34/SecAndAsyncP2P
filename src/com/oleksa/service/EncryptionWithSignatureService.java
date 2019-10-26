@@ -23,7 +23,7 @@ public class EncryptionWithSignatureService {
                 .supplyAsync(() -> concatArrays(messageBytes, longToBytes(nowTimestamp())), executorService)
                 .thenApply(messageWithTimestamp -> RSAService.encrypt(messageWithTimestamp, publicKey))
                 .thenApply(EncryptionWithSignatureService::toBase64String);
-        byte[] digestBytes = sha256(concatArrays(messageBytes, longToBytes(minuteTimestamp())));
+        byte[] digestBytes = sha256(concatArrays(messageBytes, longToBytes(secondTimestamp())));
         byte[] digestWithTimestamp = concatArrays(digestBytes, longToBytes(nowTimestamp()));
         String encryptedDigestB64 = toBase64String(RSAService.decrypt(digestWithTimestamp, privateKey));
         return new StringBuilder()
@@ -57,7 +57,7 @@ public class EncryptionWithSignatureService {
                 decryptedMessageWithTimestamp.length - Long.BYTES);
         CompletableFuture<String> decryptedMessageString = CompletableFuture
                 .supplyAsync(() -> new String(decryptedMessage), executorService);
-        byte[] hashBytes = sha256(concatArrays(decryptedMessage, longToBytes(minuteTimestamp())));
+        byte[] hashBytes = sha256(concatArrays(decryptedMessage, longToBytes(secondTimestamp())));
         if (!Arrays.equals(hashBytes, decryptedHash.join()) &&
             !Arrays.equals(hashBytes, decryptedHashComplement.join())) {
             throw new RuntimeException("Signature verification failed!");
@@ -108,6 +108,12 @@ public class EncryptionWithSignatureService {
         return LocalDateTime.now()
                 .withNano(0)
                 .withSecond(0)
+                .toEpochSecond(ZoneOffset.UTC);
+    }
+
+    private static long secondTimestamp() {
+        return LocalDateTime.now()
+                .withNano(0)
                 .toEpochSecond(ZoneOffset.UTC);
     }
 
